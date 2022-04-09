@@ -4,3 +4,4 @@
 #
 # from cartoon_effect.<insert-module-name> import CartoonImage
 #
+from cartoon_effect.c_effect import CartoonImage
