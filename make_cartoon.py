@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Argument variables
+    # DEFAULT PARAMETER FOR CARTOON VARS
     inputP = ""
     outputP = "output.jpg"
     pXDoG = 16
