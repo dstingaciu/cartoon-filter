@@ -57,7 +57,7 @@ if __name__ == "__main__":
         for row in range(len(rgbSetup)):
             for col in range(len(rgbSetup[row])):
                 for colour in range(len(rgbSetup[row][col])):
-                    rgbSetup[row][col][colour] = rgbSetup[row][col][colour] + image[row][col][colour]
+                    rgbSetup[row][col][colour] = rgbSetup[row][col][colour] + (image[row][col][colour])
         rgbSetup = (rgbSetup/rgbSetup.max()) * 255
         imsave(outputP, rgbSetup)
         
