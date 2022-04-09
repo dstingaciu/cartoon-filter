@@ -48,8 +48,8 @@ if __name__ == "__main__":
     
     image = imread(inputP)
     
-
-    imgWithEffect = CartoonImage(image, meanXDoG, pXDoG, threshold, blurring, levels).applyEffect()
+    effect = CartoonImage(image, meanXDoG, pXDoG, threshold, blurring, levels)
+    imgWithEffect = effect.applyEffect()
     
     if(image.ndim == 3):
         rgbSetup = gray2rgb(imgWithEffect)
@@ -57,9 +57,14 @@ if __name__ == "__main__":
         for row in range(len(rgbSetup)):
             for col in range(len(rgbSetup[row])):
                 for colour in range(len(rgbSetup[row][col])):
-                    rgbSetup[row][col][colour] = rgbSetup[row][col][colour] + (image[row][col][colour])
+                    rgbSetup[row][col][colour] = rgbSetup[row][col][colour] + (image[row][col][colour] * 2)
         rgbSetup = (rgbSetup/rgbSetup.max()) * 255
-        imsave(outputP, rgbSetup)
+        rgbHist = effect.histogram(imgWithEffect.astype(np.uint8))
+        
+        lut = effect._adjust_contrast(1.4, rgbHist)
+        
+        testWithContrast = effect._apply_lut(rgbSetup.astype(np.uint8), lut)
+        imsave(outputP, testWithContrast)
         
     else:
         outGreyImg = np.copy(image)

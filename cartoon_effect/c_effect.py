@@ -193,3 +193,215 @@ class CartoonImage:
         
 
         return self._LineCleanup(I_xDoG)
+    
+    def _adjust_contrast(self, scale, hist):
+        '''Generate a LUT to adjust contrast without affecting brightness.
+
+        Parameters
+        ----------
+        scale : float
+            the value used to adjust the image contrast; a value greater than 1 will
+            increase constrast while a value less than 1 will reduce it
+        hist : numpy.ndarray
+            a 256-element array containing the image histogram, which is used to
+            calculate the image brightness
+
+        Returns
+        -------
+        numpy.ndarray
+            a 256-element LUT that can be provided to ``apply_lut()``
+
+        Raises
+        ------
+        ValueError
+            if the histogram is not 256-elements or if the scale is less than zero
+        '''
+
+        if(len(hist) != 256 or scale < 0):
+            return ValueError("Error histogram is not 256 elements or scale is less than zero")
+
+        brightness = 0
+        total = 0
+
+        for i in range(len(hist)):
+            brightness = brightness + (i * hist[i])
+            total = total + hist[i]
+
+        brightness = brightness // total
+
+        lut = np.arange(0, 256, 1)
+
+        for i in range(len(lut)):
+            newVal = (scale * i) + ((1-scale) * brightness)
+            if(newVal > 255):
+                newVal = 255
+
+            if(newVal < 0):
+                newVal = 0
+
+            lut[i] = newVal
+
+        return lut.astype(np.uint8)
+
+    def _apply_lut(self, img, lut):
+        '''Apply a look-up table to an image.
+
+        The look-up table can be be used to quickly adjust the intensities within an
+        image.  For colour images, the same LUT can be applied equally to each
+        colour channel.
+
+        Parameters
+        ----------
+        img : numpy.ndarray
+            a ``H x W`` greyscale or ``H x W x C`` colour 8bpc image
+        lut : numpy.ndarray
+            a 256-element, 8-bit array
+
+        Returns
+        -------
+        numpy.ndarray
+            a new ``H x W`` or ``H x W x C`` image derived from applying the LUT
+
+        Raises
+        ------
+        ValueError
+            if the LUT is not 256-elements long
+        TypeError
+            if either the LUT or images are not 8bpc
+        '''
+        if(len(lut) != 256):
+            raise ValueError("Error! LUT is not 256-elements long")
+
+        if(img.dtype != np.uint8 or lut.dtype != np.uint8):
+            raise TypeError("Error! Can only support 8-bit images and LUTs!")
+
+        if(len(img.shape) >= 3):
+            height, width, colours = img.shape
+        else:
+            height, width = img.shape
+            colours = 1
+
+        pixelVals = img.astype(np.uint8)
+
+        if(len(img.shape) >= 3):
+            newImage = np.zeros((height, width, colours), dtype=np.uint8)
+        else:
+            newImage = np.zeros((height, width), dtype=np.uint8)
+
+        for row in range(len(pixelVals)):
+            for col in range(len(pixelVals[row])):
+                if(len(img.shape) < 3):
+                    greyVal = pixelVals[row][col]
+                    newVal = lut[greyVal]
+                    newImage[row][col] = newVal
+                else:
+                    R, G, B = pixelVals[row][col]
+                    newR = lut[R]
+                    newG = lut[G]
+                    newB = lut[B]
+                    newImage[row][col][0] = newR
+                    newImage[row][col][1] = newG
+                    newImage[row][col][2] = newB
+        return newImage
+    
+    def histogram(self, img):
+        '''Compute the histogram of an image.
+
+        This function can only support processing 8bpc images, greyscale or colour.
+        Colour images will produce three histograms (one per colour channel).
+
+        Parameters
+        ----------
+        img : numpy.ndarray
+            a ``H x W`` greyscale image
+
+        Returns
+        -------
+        numpy.ndarray
+            a 256-element, linear array containing the computed histogram
+
+        Raises
+        ------
+        ValueError
+            if the image isn't greyscale
+        TypeError
+            if the image isn't the ``numpy.uint8`` data type
+        '''
+        if(len(img.shape) >= 3):
+            raise ValueError("Error! This is not a greyscale image")
+
+        if(img.dtype != np.uint8):
+            raise TypeError("Error! This image is not a numpy.uint8 data type")
+
+        hist = np.zeros(256)
+        pixelVals = img.astype(np.uint8)
+
+        for row in range(len(pixelVals)):
+            for col in range(len(pixelVals[row])):
+                pixelVal = pixelVals[row][col]
+                hist[pixelVal] = hist[pixelVal] + 1
+
+        return hist
+
+    def adjust_exposure(self, gamma):
+        '''Generate a LUT that applies a power-law transform to an image.
+
+        Parameters
+        ----------
+        gamma : float
+            the exponent in the power-law transform; must be a positive value
+
+        Returns
+        -------
+        numpy.ndarray
+            a 256-element LUT that can be provided to ``apply_lut()``
+
+        Raises
+        ------
+        ValueError
+            if ``gamma`` is negative
+        '''
+        if(gamma < 0.0):
+            raise ValueError("Gamma is a negative value")
+
+        lut = np.arange(0, 256, 1, dtype=np.uint8)
+
+        for i in range(len(lut)):
+            percentVal = i/255
+            newVal = math.pow(percentVal, gamma) * 255
+
+            if(newVal > 255):
+                newVal = 255
+
+            if(newVal < 0):
+                newVal = 0
+
+            lut[i] = newVal
+        print(lut)
+        return lut
+
+    def adjust_brightness(self, offset):
+        '''Generate a LUT to adjust the image brightness.
+
+        Parameters
+        ----------
+        offset : int
+            the amount to offset brightness values by; this may be negative or
+            positive
+
+        Returns
+        -------
+        numpy.ndarray
+            a 256-element LUT that can be provided to ``apply_lut()``
+        '''
+        lut = np.arange(0, 256, 1)
+
+        for i in range(len(lut)):
+            newVal = i + offset
+            if(newVal > 255):
+                newVal = 255
+            if(newVal < 0):
+                newVal = 0
+            lut[i] = newVal
+
+        return lut.astype(np.uint8)
